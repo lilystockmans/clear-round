@@ -3,30 +3,59 @@
   "plan": "/Users/lily/.claude/plans/system-reminder-you-are-cuddly-lake.md",
   "simulator_artifact": "https://claude.ai/artifact/7UAjFdxJ5zGLb41JbUagDJ",
   "game_artifact": null,
-  "current_stage": "phase-1-setup",
+  "current_stage": "phase-2-steering",
   "stages": {
     "phase-1-setup": {
       "status": "done",
       "date": "2026-11-09",
-      "inputs": ["simulator artifact, version 1793357372-f7d4"],
+      "inputs": [
+        "simulator artifact, version 1793357372-f7d4"
+      ],
       "outputs": [
         "simulator.html: the watch-only simulator, publish wrapper removed",
         "game.html: copy of the simulator, starting point for the game"
       ],
       "verified": "game.html served on localhost, round runs, no console errors"
     },
-    "phase-2-steering": { "status": "pending" },
-    "phase-3-jumping": { "status": "pending" },
-    "phase-4-cues-and-screens": { "status": "pending" },
-    "phase-5-phone": { "status": "pending" },
-    "phase-6-test-and-publish": { "status": "pending" }
+    "phase-2-steering": {
+      "status": "built, waiting for Lily's feel test",
+      "date": "2026-11-09",
+      "outputs": [
+        "game.html: arrows steer (left/right) and set pace (up/down, 252 to 420 m/min)",
+        "fences and wings block the horse; arena fence holds it in",
+        "start and finish lines start and stop the clock",
+        "temporary: the horse jumps by itself when lined up with a fence (phase 3 moves this to Space)",
+        "random rail rolls and the speed button removed",
+        "#debug test hook: window.__game with step(), keys, route samples"
+      ],
+      "verified": [
+        "autopilot along the measured route: all 8 fences in order, no stops, 35.53 s vs 36 s allowed, result card Clear round",
+        "stops at east arena wall (x 40.8); turning left gets it going again",
+        "stops at the side of fence 1, the back of fence 1, and a 45 degree approach",
+        "no console errors",
+        "real-time feel NOT verified: browser pane runs at about 1 fps"
+      ]
+    },
+    "phase-3-jumping": {
+      "status": "pending"
+    },
+    "phase-4-cues-and-screens": {
+      "status": "pending"
+    },
+    "phase-5-phone": {
+      "status": "pending"
+    },
+    "phase-6-test-and-publish": {
+      "status": "pending"
+    }
   },
-  "open_questions": [
-    "Scoring: 4 faults per rail (recommended) or 1 point",
-    "Up/down arrows for pace (recommended) or fixed pace",
-    "New artifact for the game (recommended) or replace the simulator",
-    "Strict elimination rules on Easy too, or gentler",
-    "Name: keep Clear Round or a new name"
-  ],
-  "next_step": "Answer the open questions, then start phase-2-steering in game.html"
+  "decisions": {
+    "date": "2026-11-09",
+    "scoring": "4 faults per rail down, plus time faults",
+    "arrows": "left/right steer, up/down change pace",
+    "publish": "new artifact for the game, simulator stays",
+    "rules_on_easy": "same strict rules as Normal and Hard",
+    "name": "Clear Round"
+  },
+  "next_step": "Lily rides game.html and reports how steering feels; then phase-3-jumping"
 }

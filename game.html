@@ -72,7 +72,11 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .result p { margin: 0; color: var(--muted); line-height: 1.45; }
 .result .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
 .result button { align-self: flex-start; margin-top: 10px; }
-.hint { font-size: 12px; color: var(--muted); padding: 0 4px; }
+.hint {
+  position: fixed; left: 50%; top: 68%; transform: translateX(-50%);
+  width: max-content; max-width: calc(100% - 32px); padding: 10px 14px;
+  font-size: 14px; line-height: 1.4; color: var(--ink); text-align: center;
+}
 @media (max-width: 560px) {
   .val { font-size: 24px; }
   .cell { padding: 6px 10px 8px; }
@@ -101,10 +105,10 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     <ol class="panel chips" id="chips" aria-label="Course"></ol>
     <div class="panel ctrl">
       <span class="pace" id="pace">Pace -- m/min</span>
-      <button id="speed" aria-label="Playback speed">1x</button>
       <button id="restart" class="primary">New round</button>
     </div>
   </div>
+  <div class="panel hint" id="hint">Left and right arrows steer. Up and down arrows change pace. Press an arrow key to start.</div>
   <div class="panel result" id="result" hidden>
     <span class="eyebrow">Round complete</span>
     <h2 id="rTitle">Clear round</h2>
@@ -488,17 +492,68 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   FENCES.forEach(f => { const li = document.createElement('li'); li.textContent = f.n; chipsEl.appendChild(li); f.chip = li; });
   $('vTA').textContent = TIME_ALLOWED;
 
+  // ---------- Riding constants ----------
+  const PACE_MIN = 4.2, PACE_MAX = 7.0, PACE_START = 5.8; // metres per second (252 to 420 m/min)
+  const HORSE_START = { x: -38, z: 18, yaw: 0 };
+  const WALL = { x: AX - 1.2, z: AZ - 1.2 };
+  const HORSE_R = 0.6; // clearance around the horse's centre for collisions
+
+  // Fence frame: u along the jumping direction, w sideways (+w is the red-flag side)
+  FENCES.forEach(f => {
+    f.rx = -f.dz; f.rz = f.dx;
+    f.run = 2.0 + f.h * 0.6;        // take-off distance before the front of the fence
+    f.blockU = f.spread / 2 + 0.8;  // hedge to back rail, half depth
+    f.blockW = RAIL_LEN / 2 + 0.95; // rails plus wings, half width
+  });
+  const fenceUW = (f, x, z) => [(x - f.x) * f.dx + (z - f.z) * f.dz, (x - f.x) * f.rx + (z - f.z) * f.rz];
+  const insideFence = (f, x, z) => {
+    const [u, w] = fenceUW(f, x, z);
+    return Math.abs(u) < f.blockU + HORSE_R && Math.abs(w) < f.blockW + HORSE_R;
+  };
+
+  // Start and finish lines: crossed forwards, between the two flags
+  function makeLine(p) {
+    const t = curve.getTangentAt(sAt(p.x, p.z) / LEN);
+    return { x: p.x, z: p.z, tx: t.x, tz: t.z };
+  }
+  const START_LINE = makeLine(START), FINISH_LINE = makeLine(FINISH);
+  function crossed(line, x0, z0, x1, z1) {
+    const a = (x0 - line.x) * line.tx + (z0 - line.z) * line.tz;
+    const b = (x1 - line.x) * line.tx + (z1 - line.z) * line.tz;
+    const side = Math.abs(-(x1 - line.x) * line.tz + (z1 - line.z) * line.tx);
+    return a < 0 && b >= 0 && side < 3;
+  }
+
+  // ---------- Keyboard ----------
+  const keys = { left: false, right: false, up: false, down: false };
+  const KEYMAP = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+  window.addEventListener('keydown', e => {
+    const k = KEYMAP[e.key];
+    if (k || e.key === ' ') e.preventDefault();
+    if (!k) return;
+    keys[k] = true;
+    if (R.state === 'ready') startRiding();
+  });
+  window.addEventListener('keyup', e => {
+    const k = KEYMAP[e.key];
+    if (k || e.key === ' ') e.preventDefault();
+    if (k) keys[k] = false;
+  });
+  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+  // A clicked button keeps focus, and Space would press it again: drop focus after each click
+  document.querySelectorAll('button').forEach(b => b.addEventListener('click', () => b.blur()));
+
   // ---------- Round state ----------
   let R;
   function newRound() {
     R = {
-      state: 'ready', readyT: 1.4, s: 0, v: 0,
-      target: 5.7 + Math.random() * 0.8, // metres per second for this round
+      state: 'ready', x: HORSE_START.x, z: HORSE_START.z, yaw: HORSE_START.yaw, yawRate: 0,
+      v: 0, pace: PACE_START,
       time: 0, clock: false, stopped: false, faults: 0, rails: [],
-      phase: 0, wasJumping: false
+      phase: 0, jump: null
     };
     FENCES.forEach(f => {
-      f.knock = Math.random() < 0.15;
+      f.knock = false;
       f.done = false;
       f.fall = null;
       f.top.position.set(f.topHome.x, f.topHome.y, 0);
@@ -506,8 +561,12 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       f.chip.className = '';
     });
     $('result').hidden = true;
-    $('pace').textContent = 'Pace ' + Math.round(R.target * 60) + ' m/min';
+    $('hint').hidden = false;
     H.legs.forEach(l => { l.a = 0; l.b = 0; });
+  }
+  function startRiding() {
+    R.state = 'riding';
+    $('hint').hidden = true;
   }
 
   function timeFaults() {
@@ -528,40 +587,70 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     $('result').hidden = false;
   }
 
+  function markFence(f) {
+    f.done = true;
+    if (f.knock) {
+      R.faults += 4; R.rails.push(f.n);
+      f.fall = { t: 0, dir: Math.random() < .5 ? -1 : 1 };
+      f.chip.className = 'down';
+    } else f.chip.className = 'clear';
+  }
+
   // ---------- Simulation ----------
-  const tmpP = new THREE.Vector3(), tmpT = new THREE.Vector3();
   const lerp = (a, b, k) => a + (b - a) * k;
 
   function step(dt) {
-    if (R.state === 'ready') {
-      R.readyT -= dt;
-      if (R.readyT <= 0) R.state = 'riding';
-    } else if (R.state === 'riding') {
-      R.v = Math.min(R.target, R.v + 2.6 * dt);
-      R.s += R.v * dt;
-      if (!R.clock && R.s >= S_START) R.clock = true;
-      if (R.s >= S_FINISH) { R.stopped = true; R.state = 'finishing'; }
-    } else if (R.state === 'finishing') {
-      const remaining = LEN - 0.3 - R.s;
-      if (remaining <= 0.05 || R.v < 0.25) { R.v = 0; R.state = 'done'; showResult(); }
-      else { R.v = Math.max(0, R.v - (R.v * R.v / (2 * remaining)) * dt); R.s += R.v * dt; }
+    const riding = R.state === 'riding', moving0 = riding || R.state === 'finishing';
+
+    // Pace: up and down arrows move the target pace; the horse eases toward it
+    if (riding) {
+      if (keys.up) R.pace = Math.min(PACE_MAX, R.pace + 1.2 * dt);
+      if (keys.down) R.pace = Math.max(PACE_MIN, R.pace - 1.2 * dt);
     }
+    const targetV = riding ? R.pace : 0;
+    R.v = targetV > R.v ? Math.min(targetV, R.v + 2.6 * dt) : Math.max(targetV, R.v - 2.4 * dt);
+    if (R.state === 'finishing' && R.v === 0) { R.state = 'done'; showResult(); }
+
+    // Steering: a faster horse turns wider; a standing horse can still turn slowly
+    const steer = moving0 && !R.jump ? (keys.left ? 1 : 0) - (keys.right ? 1 : 0) : 0;
+    const maxTurn = (2.0 - 0.15 * R.v) * Math.min(1, R.v / 2 + 0.3);
+    R.yawRate = lerp(R.yawRate, steer * maxTurn, Math.min(1, dt * 6));
+    R.yaw += R.yawRate * dt;
+
+    const fx = Math.cos(R.yaw), fz = -Math.sin(R.yaw);
+    const v = R.jump ? Math.max(R.v, 3) : R.v;
+    let nx = R.x + fx * v * dt, nz = R.z + fz * v * dt;
+
+    // Take-off: for now automatic when the horse is lined up (phase 3 moves this to the Space key)
+    if (!R.jump && R.v > 1) {
+      for (const f of FENCES) {
+        const [u0, w0] = fenceUW(f, R.x, R.z), [u1] = fenceUW(f, nx, nz);
+        const takeoff = -(f.spread / 2 + f.run);
+        if (u0 < takeoff && u1 >= takeoff && Math.abs(w0) < RAIL_LEN / 2 - 0.2 && fx * f.dx + fz * f.dz > 0.75) {
+          R.jump = { f, d: 0, L: 2 * f.run + f.spread };
+          break;
+        }
+      }
+    }
+
+    // Collisions: fences and wings stop the horse, the arena fence holds it in
+    if (!R.jump) {
+      let blocked = FENCES.some(f => insideFence(f, nx, nz) && !insideFence(f, R.x, R.z));
+      const cx = Math.max(-WALL.x, Math.min(WALL.x, nx)), cz = Math.max(-WALL.z, Math.min(WALL.z, nz));
+      if (cx !== nx || cz !== nz) { nx = cx; nz = cz; R.v = 0; }
+      if (blocked) { nx = R.x; nz = R.z; R.v = 0; }
+    }
+
+    if (!R.clock && crossed(START_LINE, R.x, R.z, nx, nz)) R.clock = true;
+    if (R.clock && !R.stopped && crossed(FINISH_LINE, R.x, R.z, nx, nz)) { R.stopped = true; R.state = 'finishing'; }
+    R.x = nx; R.z = nz;
     if (R.clock && !R.stopped) R.time += dt;
 
-    // Fence results
+    // Falling rails
     for (const f of FENCES) {
-      if (!f.done && R.s >= f.s + f.spread / 2) {
-        f.done = true;
-        if (f.knock) {
-          R.faults += 4; R.rails.push(f.n);
-          f.fall = { t: 0, dir: Math.random() < .5 ? -1 : 1 };
-          f.chip.className = 'down';
-        } else f.chip.className = 'clear';
-      }
       if (f.fall) {
         const fl = f.fall; fl.t += dt;
-        const restY = f.type === 'wall' ? 0.06 : 0.06;
-        f.top.position.y = Math.max(restY, f.topHome.y - 4.9 * fl.t * fl.t);
+        f.top.position.y = Math.max(0.06, f.topHome.y - 4.9 * fl.t * fl.t);
         f.top.position.x = f.topHome.x + fl.dir * Math.min(fl.t, 0.45) * 1.6;
         f.top.rotation.y = fl.dir * Math.min(fl.t, 0.6) * 0.35;
         if (fl.t > 1.2) f.fall = null;
@@ -569,23 +658,24 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     }
 
     // Jump arc
-    let jp = -1, jf = null;
-    for (const f of FENCES) if (R.s > f.s0 && R.s < f.s1) { jf = f; jp = (R.s - f.s0) / (f.s1 - f.s0); }
-    let y = 0, pitch = 0;
-    if (jf) {
+    let jp = -1, jf = null, y = 0, pitch = 0;
+    if (R.jump) {
+      const J = R.jump;
+      J.d += v * dt;
+      jf = J.f; jp = Math.min(1, J.d / J.L);
       const peak = jf.h - (jf.knock ? 0.55 : 0.28);
-      const L = jf.s1 - jf.s0;
       y = peak * 4 * jp * (1 - jp);
-      pitch = Math.atan(peak * 4 * (1 - 2 * jp) / L) * 0.9;
+      pitch = Math.atan(peak * 4 * (1 - 2 * jp) / J.L) * 0.9;
+      if (jp >= 1) {
+        R.jump = null; jf = null; y = 0; pitch = 0;
+        markFence(J.f);
+        puff(H.root.position);
+      }
     }
-    if (R.wasJumping && !jf) puff(H.root.position);
-    R.wasJumping = !!jf;
 
-    // Place horse on the path
-    const u = Math.min(R.s / LEN, 1);
-    curve.getPointAt(u, tmpP); curve.getTangentAt(u, tmpT);
-    H.root.position.set(tmpP.x, y, tmpP.z);
-    H.root.rotation.y = Math.atan2(-tmpT.z, tmpT.x);
+    // Place the horse
+    H.root.position.set(R.x, y, R.z);
+    H.root.rotation.y = R.yaw;
 
     // Gait
     const moving = R.v > 0.05;
@@ -609,6 +699,8 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     const bob = moving && !jf ? Math.sin(2 * Math.PI * R.phase) : 0;
     H.body.position.y = 0.05 * bob * gaitAmp;
     H.body.rotation.z = lerp(H.body.rotation.z, pitch + 0.04 * bob * gaitAmp, k);
+    // Lean into the turn
+    H.body.rotation.x = lerp(H.body.rotation.x, Math.max(-0.25, Math.min(0.25, -0.035 * R.yawRate * R.v)), k);
     H.neck.rotation.z = lerp(H.neck.rotation.z, (moving ? -0.06 * Math.cos(2 * Math.PI * R.phase) : 0.05) - 0.25 * w, k);
     H.tail.rotation.z = lerp(H.tail.rotation.z, -0.4 - 0.5 * gaitAmp - 0.5 * w, k);
     H.rider.rotation.z = lerp(H.rider.rotation.z, -0.18 * gaitAmp - 0.45 * w, k);
@@ -658,14 +750,13 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     const fv = $('vFaults');
     fv.textContent = R.faults + tf;
     fv.classList.toggle('has', R.faults + tf > 0);
+    $('pace').textContent = 'Pace ' + Math.round(R.pace * 60) + ' m/min';
   }
 
+  // Test hook: open the page with #debug to drive the horse from the console
+  if (location.hash === '#debug') window.__game = { get R() { return R; }, keys, FENCES, step, newRound, startRiding, TIME_ALLOWED, samples, LEN };
+
   // ---------- Controls ----------
-  let speed = 1;
-  $('speed').addEventListener('click', () => {
-    speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1;
-    $('speed').textContent = speed === 0.5 ? '0.5x' : speed + 'x';
-  });
   $('restart').addEventListener('click', newRound);
   $('again').addEventListener('click', newRound);
 
@@ -685,10 +776,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    const sdt = dt * speed;
-    // Sub-steps keep the jump arc smooth at 2x
-    const n = sdt > 0.02 ? 2 : 1;
-    for (let i = 0; i < n; i++) step(sdt / n);
+    step(dt);
     updateCamera(dt);
     updateHud();
     renderer.render(scene, camera);
