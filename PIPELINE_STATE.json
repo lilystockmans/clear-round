@@ -3,7 +3,7 @@
   "plan": "/Users/lily/.claude/plans/system-reminder-you-are-cuddly-lake.md",
   "simulator_artifact": "https://claude.ai/artifact/7UAjFdxJ5zGLb41JbUagDJ",
   "game_artifact": null,
-  "current_stage": "phase-2-steering",
+  "current_stage": "phase-3-jumping",
   "stages": {
     "phase-1-setup": {
       "status": "done",
@@ -18,7 +18,7 @@
       "verified": "game.html served on localhost, round runs, no console errors"
     },
     "phase-2-steering": {
-      "status": "built, waiting for Lily's feel test",
+      "status": "done",
       "date": "2026-11-09",
       "outputs": [
         "game.html: arrows steer (left/right) and set pace (up/down, 252 to 420 m/min)",
@@ -34,10 +34,35 @@
         "stops at the side of fence 1, the back of fence 1, and a 45 degree approach",
         "no console errors",
         "real-time feel NOT verified: browser pane runs at about 1 fps"
-      ]
+      ],
+      "lily_feel_test": "feels good (2026-11-09)"
     },
     "phase-3-jumping": {
-      "status": "pending"
+      "status": "built, waiting for Lily's play test",
+      "date": "2026-11-09",
+      "outputs": [
+        "Space jumps; auto-jump removed",
+        "timing window (Normal): good within 0.12 s of the ideal take-off point and lined up; early or late up to 0.35 s before or until the fence knocks a rail (4 faults)",
+        "Space with no fence in reach does nothing",
+        "refusal: arriving at the next fence lined up at speed without a jump; run-out: passing beside the next fence within 3 m of its wings",
+        "first refusal or run-out 4 faults, second one eliminates",
+        "error of course: jumping a fence out of order eliminates",
+        "finish line only counts after the last fence",
+        "toast message for refusal, run-out, eliminated; result card shows eliminated with the reason"
+      ],
+      "verified": [
+        "autopilot perfect press: all 8 good, Clear round, 35.50 s",
+        "autopilot late by 1.0 m: all 8 late, 32 faults; early by 1.2 m: all 8 early, 32 faults",
+        "window edge: 0.6 m late still good, 0.8 m late is late",
+        "no press at fence 1: refusal 4 faults; second refusal: eliminated",
+        "run-out beside fence 1: 4 faults",
+        "jumping fence 2 first: eliminated, error of course",
+        "Space far from fences: nothing happens",
+        "crossing finish before all fences: ignored",
+        "real Space key event starts a jump",
+        "no console errors",
+        "real-time feel NOT verified: browser pane runs at about 1 fps"
+      ]
     },
     "phase-4-cues-and-screens": {
       "status": "pending"
@@ -57,5 +82,5 @@
     "rules_on_easy": "same strict rules as Normal and Hard",
     "name": "Clear Round"
   },
-  "next_step": "Lily rides game.html and reports how steering feels; then phase-3-jumping"
+  "next_step": "Lily plays phase 3; then phase-4-cues-and-screens"
 }

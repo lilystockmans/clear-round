@@ -77,6 +77,11 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   width: max-content; max-width: calc(100% - 32px); padding: 10px 14px;
   font-size: 14px; line-height: 1.4; color: var(--ink); text-align: center;
 }
+.toast {
+  position: fixed; left: 50%; top: 26%; transform: translateX(-50%);
+  padding: 8px 16px; font-family: var(--display); font-weight: 700; font-size: 28px;
+  color: var(--fault); white-space: nowrap;
+}
 @media (max-width: 560px) {
   .val { font-size: 24px; }
   .cell { padding: 6px 10px 8px; }
@@ -108,7 +113,8 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       <button id="restart" class="primary">New round</button>
     </div>
   </div>
-  <div class="panel hint" id="hint">Left and right arrows steer. Up and down arrows change pace. Press an arrow key to start.</div>
+  <div class="panel hint" id="hint">Left and right arrows steer. Up and down arrows change pace. Space jumps. Press an arrow key to start.</div>
+  <div class="panel toast" id="toast" role="status" hidden></div>
   <div class="panel result" id="result" hidden>
     <span class="eyebrow">Round complete</span>
     <h2 id="rTitle">Clear round</h2>
@@ -497,6 +503,9 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   const HORSE_START = { x: -38, z: 18, yaw: 0 };
   const WALL = { x: AX - 1.2, z: AZ - 1.2 };
   const HORSE_R = 0.6; // clearance around the horse's centre for collisions
+  // Jump timing in seconds either side of the ideal take-off point (Normal; phase 4 adds Easy and Hard)
+  const WINDOW = { good: 0.12, early: 0.35 };
+  const MIN_JUMP_SPEED = 2; // a standing or walking horse cannot jump
 
   // Fence frame: u along the jumping direction, w sideways (+w is the red-flag side)
   FENCES.forEach(f => {
@@ -530,6 +539,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   window.addEventListener('keydown', e => {
     const k = KEYMAP[e.key];
     if (k || e.key === ' ') e.preventDefault();
+    if (e.key === ' ' && !e.repeat) pressJump();
     if (!k) return;
     keys[k] = true;
     if (R.state === 'ready') startRiding();
@@ -550,10 +560,12 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       state: 'ready', x: HORSE_START.x, z: HORSE_START.z, yaw: HORSE_START.yaw, yawRate: 0,
       v: 0, pace: PACE_START,
       time: 0, clock: false, stopped: false, faults: 0, rails: [],
+      disobedience: 0, disobeyed: [], eliminated: null, toastT: 0,
       phase: 0, jump: null
     };
     FENCES.forEach(f => {
       f.knock = false;
+      f.result = null;
       f.done = false;
       f.fall = null;
       f.top.position.set(f.topHome.x, f.topHome.y, 0);
@@ -575,12 +587,20 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   }
 
   function showResult() {
-    const tf = timeFaults(), total = R.faults + tf;
     const title = $('rTitle');
+    if (R.eliminated) {
+      title.textContent = 'Eliminated';
+      title.className = 'faults';
+      $('rDetail').textContent = R.eliminated;
+      $('result').hidden = false;
+      return;
+    }
+    const tf = timeFaults(), total = R.faults + tf;
     title.textContent = total === 0 ? 'Clear round' : total + (total === 1 ? ' fault' : ' faults');
     title.className = total === 0 ? 'clear' : 'faults';
     const parts = [R.time.toFixed(2) + ' s against ' + TIME_ALLOWED + ' s allowed.'];
     if (R.rails.length) parts.push('Rail down at ' + R.rails.join(', ') + ' (4 each).');
+    if (R.disobeyed.length) parts.push(R.disobeyed.join(', ') + ' (4 faults).');
     if (tf) parts.push(tf + ' time ' + (tf === 1 ? 'fault' : 'faults') + ', one per 4 seconds started over the time.');
     if (!total) parts.push('No rails down, inside the time.');
     $('rDetail').textContent = parts.join(' ');
@@ -594,6 +614,55 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       f.fall = { t: 0, dir: Math.random() < .5 ? -1 : 1 };
       f.chip.className = 'down';
     } else f.chip.className = 'clear';
+  }
+
+  // The next fence on the course, in number order
+  const nextFence = () => FENCES.find(f => !f.done);
+
+  function toast(text) {
+    $('toast').textContent = text;
+    $('toast').hidden = false;
+    R.toastT = 1.8;
+  }
+
+  function eliminate(reason) {
+    R.eliminated = reason;
+    R.stopped = true;
+    R.state = 'finishing';
+    toast('Eliminated');
+  }
+
+  // Refusal or run-out: 4 faults the first time, elimination the second time
+  function disobey(kind, f) {
+    R.disobedience++;
+    if (R.disobedience >= 2) { eliminate('Second disobedience: ' + kind.toLowerCase() + ' at fence ' + f.n + '.'); return; }
+    R.faults += 4;
+    R.disobeyed.push(kind + ' at ' + f.n);
+    toast(kind + ', 4 faults');
+  }
+
+  // Space: take off now. The distance to the ideal take-off point decides good, early or late.
+  function pressJump() {
+    if (R.state !== 'riding' || R.jump || R.v < MIN_JUMP_SPEED) return;
+    const fx = Math.cos(R.yaw), fz = -Math.sin(R.yaw);
+    for (const f of FENCES) {
+      const [u, w] = fenceUW(f, R.x, R.z);
+      const takeoff = -(f.spread / 2 + f.run);
+      const align = fx * f.dx + fz * f.dz;
+      if (align < 0.6 || Math.abs(w) > RAIL_LEN / 2) continue;
+      if (u < takeoff - WINDOW.early * R.v || u > -f.blockU) continue;
+      const next = nextFence();
+      if (f !== next) {
+        eliminate('Error of course: fence ' + f.n + (next ? ' jumped before fence ' + next.n + '.' : ' jumped again.'));
+        return;
+      }
+      const err = (u - takeoff) / R.v; // seconds; negative is early
+      f.result = Math.abs(err) <= WINDOW.good && align > 0.85 ? 'good' : err < 0 ? 'early' : 'late';
+      f.knock = f.result !== 'good';
+      R.jump = { f, d: 0, L: -u + f.spread / 2 + f.run };
+      return;
+    }
+    // No fence within reach: the press does nothing ("Too soon" cue comes in phase 4)
   }
 
   // ---------- Simulation ----------
@@ -621,28 +690,29 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     const v = R.jump ? Math.max(R.v, 3) : R.v;
     let nx = R.x + fx * v * dt, nz = R.z + fz * v * dt;
 
-    // Take-off: for now automatic when the horse is lined up (phase 3 moves this to the Space key)
-    if (!R.jump && R.v > 1) {
-      for (const f of FENCES) {
-        const [u0, w0] = fenceUW(f, R.x, R.z), [u1] = fenceUW(f, nx, nz);
-        const takeoff = -(f.spread / 2 + f.run);
-        if (u0 < takeoff && u1 >= takeoff && Math.abs(w0) < RAIL_LEN / 2 - 0.2 && fx * f.dx + fz * f.dz > 0.75) {
-          R.jump = { f, d: 0, L: 2 * f.run + f.spread };
-          break;
-        }
+    // Collisions: fences and wings stop the horse, the arena fence holds it in.
+    // Arriving at the next fence lined up and at speed without a jump is a refusal.
+    if (!R.jump) {
+      const hit = FENCES.find(f => insideFence(f, nx, nz) && !insideFence(f, R.x, R.z));
+      if (hit) {
+        const [, w] = fenceUW(hit, R.x, R.z);
+        if (riding && hit === nextFence() && R.v > 1.5 && fx * hit.dx + fz * hit.dz > 0.5 && Math.abs(w) < RAIL_LEN / 2 + 0.3) disobey('Refusal', hit);
+        nx = R.x; nz = R.z; R.v = 0;
+      }
+      const cx = Math.max(-WALL.x, Math.min(WALL.x, nx)), cz = Math.max(-WALL.z, Math.min(WALL.z, nz));
+      if (cx !== nx || cz !== nz) { nx = cx; nz = cz; R.v = 0; }
+
+      // Run-out: passing beside the next fence, close to its wings, without jumping it
+      const next = nextFence();
+      if (riding && next) {
+        const [u0, w0] = fenceUW(next, R.x, R.z), [u1] = fenceUW(next, nx, nz);
+        if (u0 < 0 && u1 >= 0 && Math.abs(w0) < next.blockW + 3) disobey('Run-out', next);
       }
     }
 
-    // Collisions: fences and wings stop the horse, the arena fence holds it in
-    if (!R.jump) {
-      let blocked = FENCES.some(f => insideFence(f, nx, nz) && !insideFence(f, R.x, R.z));
-      const cx = Math.max(-WALL.x, Math.min(WALL.x, nx)), cz = Math.max(-WALL.z, Math.min(WALL.z, nz));
-      if (cx !== nx || cz !== nz) { nx = cx; nz = cz; R.v = 0; }
-      if (blocked) { nx = R.x; nz = R.z; R.v = 0; }
-    }
-
     if (!R.clock && crossed(START_LINE, R.x, R.z, nx, nz)) R.clock = true;
-    if (R.clock && !R.stopped && crossed(FINISH_LINE, R.x, R.z, nx, nz)) { R.stopped = true; R.state = 'finishing'; }
+    if (R.clock && !R.stopped && !nextFence() && crossed(FINISH_LINE, R.x, R.z, nx, nz)) { R.stopped = true; R.state = 'finishing'; }
+    if (R.toastT > 0 && (R.toastT -= dt) <= 0) $('toast').hidden = true;
     R.x = nx; R.z = nz;
     if (R.clock && !R.stopped) R.time += dt;
 
@@ -754,7 +824,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   }
 
   // Test hook: open the page with #debug to drive the horse from the console
-  if (location.hash === '#debug') window.__game = { get R() { return R; }, keys, FENCES, step, newRound, startRiding, TIME_ALLOWED, samples, LEN };
+  if (location.hash === '#debug') window.__game = { get R() { return R; }, keys, FENCES, step, newRound, startRiding, TIME_ALLOWED, samples, LEN, pressJump };
 
   // ---------- Controls ----------
   $('restart').addEventListener('click', newRound);
