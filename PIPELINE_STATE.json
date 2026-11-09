@@ -3,7 +3,7 @@
   "plan": "/Users/lily/.claude/plans/system-reminder-you-are-cuddly-lake.md",
   "simulator_artifact": "https://claude.ai/artifact/7UAjFdxJ5zGLb41JbUagDJ",
   "game_artifact": null,
-  "current_stage": "phase-3-jumping",
+  "current_stage": "phase-4-cues-and-screens",
   "stages": {
     "phase-1-setup": {
       "status": "done",
@@ -38,7 +38,7 @@
       "lily_feel_test": "feels good (2026-11-09)"
     },
     "phase-3-jumping": {
-      "status": "built, waiting for Lily's play test",
+      "status": "done",
       "date": "2026-11-09",
       "outputs": [
         "Space jumps; auto-jump removed",
@@ -62,10 +62,35 @@
         "real Space key event starts a jump",
         "no console errors",
         "real-time feel NOT verified: browser pane runs at about 1 fps"
-      ]
+      ],
+      "lily_play_test": "feels good (2026-11-09)"
     },
     "phase-4-cues-and-screens": {
-      "status": "pending"
+      "status": "built, waiting for Lily's play test",
+      "date": "2026-11-09",
+      "outputs": [
+        "levels: Easy (good 0.20 s, guide line, arrow, take-off line), Normal (0.12 s, arrow, take-off line), Hard (0.08 s, stride count only, faster start pace)",
+        "stride countdown 3-2-1 when lined up with the next fence",
+        "gold take-off line on the sand in front of the next fence",
+        "on-screen arrow to the next fence's approach (replaced a sand arrow that the horse hid in Follow camera)",
+        "next fence number pulses",
+        "words: Good, Early, Late, Too soon, Rail down",
+        "start screen with level choice (click or keys 1/2/3), controls line, best score",
+        "P or Esc pauses",
+        "result card: fence-by-fence Good/Early/Late, best score per level (browser storage)",
+        "Free camera only after the round",
+        "tuning: time allowed now at 325 m/min (39 s), Easy starts at the same pace as Normal"
+      ],
+      "verified": [
+        "perfect autopilot on Easy, Normal, Hard: Clear round inside 39 s",
+        "window edges: Hard 0.6 m late = rail; Easy 1.0 m late = good",
+        "countdown shows 3, 2, 1; toasts Good / Late / Rail down appear",
+        "take-off line, guide dashes and arrow visible in screenshots; arrow bearing checked by numbers",
+        "pause on and off; level keys 2 and 3 on the start screen",
+        "result card with fence list and best score; Free camera enabled after the round",
+        "no console errors",
+        "real-time feel NOT verified: browser pane runs at about 1 fps"
+      ]
     },
     "phase-5-phone": {
       "status": "pending"
@@ -82,5 +107,5 @@
     "rules_on_easy": "same strict rules as Normal and Hard",
     "name": "Clear Round"
   },
-  "next_step": "Lily plays phase 3; then phase-4-cues-and-screens"
+  "next_step": "Lily plays phase 4; then phase-5-phone"
 }

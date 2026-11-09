@@ -61,27 +61,53 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .pace { font-size: 12px; color: var(--muted); margin-right: 8px; font-variant-numeric: tabular-nums; }
 .primary { background: var(--gold); color: #1d1a10; }
 .primary:hover { background: #f3c85c; }
-.result {
-  position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%);
-  width: min(340px, calc(100% - 32px)); padding: 22px 24px 20px; text-align: left;
-  display: flex; flex-direction: column; gap: 6px;
+.card {
+  position: fixed; left: 50%; top: 46%; transform: translate(-50%, -50%);
+  width: min(360px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow-y: auto;
+  padding: 22px 24px 20px; text-align: left;
+  display: flex; flex-direction: column; gap: 8px;
 }
-.result h2 { margin: 0; font-family: var(--display); font-size: 44px; line-height: 1; letter-spacing: .01em; text-wrap: balance; }
-.result h2.clear { color: var(--clear); }
-.result h2.faults { color: var(--fault); }
-.result p { margin: 0; color: var(--muted); line-height: 1.45; }
-.result .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
-.result button { align-self: flex-start; margin-top: 10px; }
-.hint {
-  position: fixed; left: 50%; top: 68%; transform: translateX(-50%);
-  width: max-content; max-width: calc(100% - 32px); padding: 10px 14px;
-  font-size: 14px; line-height: 1.4; color: var(--ink); text-align: center;
+.card h2 { margin: 0; font-family: var(--display); font-size: 44px; line-height: 1; letter-spacing: .01em; text-wrap: balance; }
+.card h2.clear { color: var(--clear); }
+.card h2.faults { color: var(--fault); }
+.card p { margin: 0; color: var(--muted); line-height: 1.45; }
+.card .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.card > button.primary { align-self: flex-start; margin-top: 6px; }
+.levels { display: flex; gap: 4px; margin-top: 4px; }
+.levels button { flex: 1; background: rgba(255,255,255,.07); padding: 11px 8px; }
+.levels button[aria-checked="true"] { background: var(--ink); color: #17211b; }
+.keys { font-size: 13px; }
+.keys kbd { font: 600 12px/1 var(--body); color: var(--ink); background: rgba(255,255,255,.1); border-radius: 3px; padding: 2px 5px; }
+.fence-results { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.fence-results li {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px;
+  background: rgba(255,255,255,.06); border-radius: 4px; border-bottom: 3px solid transparent;
+  font-family: var(--display); font-weight: 700; font-size: 17px;
 }
+.fence-results li span { font-family: var(--body); font-weight: 600; font-size: 11px; letter-spacing: .04em; color: var(--muted); }
+.fence-results li.good { border-bottom-color: var(--clear); }
+.fence-results li.early, .fence-results li.late { border-bottom-color: var(--fault); }
 .toast {
-  position: fixed; left: 50%; top: 26%; transform: translateX(-50%);
+  position: fixed; left: 50%; top: 24%; transform: translateX(-50%);
   padding: 8px 16px; font-family: var(--display); font-weight: 700; font-size: 28px;
   color: var(--fault); white-space: nowrap;
 }
+.toast.good { color: var(--clear); }
+.toast.warn { color: var(--gold); }
+.toast.muted { color: var(--muted); }
+.cue {
+  position: fixed; left: 50%; top: 34%; transform: translate(-50%, -50%);
+  font-family: var(--display); font-weight: 700; font-size: 64px; line-height: 1; color: var(--ink);
+  text-shadow: 0 2px 10px rgba(0,0,0,.45); font-variant-numeric: tabular-nums;
+}
+.pointer {
+  position: fixed; left: 50%; top: 34%; width: 52px; height: 52px; transform: translate(-50%, -50%);
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
+}
+.pointer svg { display: block; width: 100%; height: 100%; fill: var(--gold); stroke: rgba(0,0,0,.35); stroke-width: 1.5; }
+.paused { position: fixed; left: 50%; top: 46%; transform: translate(-50%, -50%); padding: 14px 20px; font-size: 15px; text-align: center; }
+.cams button:disabled { opacity: .35; cursor: default; }
+.cams button:disabled:hover { background: transparent; }
 @media (max-width: 560px) {
   .val { font-size: 24px; }
   .cell { padding: 6px 10px 8px; }
@@ -113,14 +139,32 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       <button id="restart" class="primary">New round</button>
     </div>
   </div>
-  <div class="panel hint" id="hint">Left and right arrows steer. Up and down arrows change pace. Space jumps. Press an arrow key to start.</div>
+  <div class="cue" id="cue" aria-hidden="true" hidden></div>
+  <div class="pointer" id="pointer" aria-hidden="true" hidden><svg viewBox="0 0 48 48"><path d="M24 3 L42 40 L24 31 L6 40 Z"/></svg></div>
   <div class="panel toast" id="toast" role="status" hidden></div>
-  <div class="panel result" id="result" hidden>
-    <span class="eyebrow">Round complete</span>
+  <div class="panel paused" id="paused" hidden>Paused. Press <strong>P</strong> to ride on.</div>
+  <section class="panel card" id="start" aria-label="Start">
+    <span class="eyebrow">Clear Round</span>
+    <h2>Ride the course</h2>
+    <p>Jump fences 1 to 7 in number order, with the red flag on your right. Then ride through the finish.</p>
+    <div class="levels" role="radiogroup" aria-label="Level">
+      <button role="radio" data-level="easy" aria-checked="false">1 Easy</button>
+      <button role="radio" data-level="normal" aria-checked="true">2 Normal</button>
+      <button role="radio" data-level="hard" aria-checked="false">3 Hard</button>
+    </div>
+    <p id="levelInfo"></p>
+    <p class="keys"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> steer &middot; <kbd>&uarr;</kbd> <kbd>&darr;</kbd> pace &middot; <kbd>Space</kbd> jump &middot; <kbd>P</kbd> pause</p>
+    <p id="best"></p>
+    <button id="go" class="primary">Start</button>
+  </section>
+  <section class="panel card" id="result" aria-label="Result" hidden>
+    <span class="eyebrow" id="rLevel">Round complete</span>
     <h2 id="rTitle">Clear round</h2>
     <p id="rDetail"></p>
+    <ol class="fence-results" id="rFences" aria-label="Fence by fence"></ol>
+    <p id="rBest"></p>
     <button id="again" class="primary">Ride again</button>
-  </div>
+  </section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -276,7 +320,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     { n: '7',  type: 'vertical', x: -18,  z: -17, a: 0,    h: 1.30, col: ['#c8322b', '#ffffff'] }
   ];
   const START = { x: -29, z: 18 }, FINISH = { x: -7, z: -17 };
-  const STANDARD_PACE = 350; // metres per minute, sets the time allowed
+  const STANDARD_PACE = 325; // metres per minute, sets the time allowed (below 350 because a hand-ridden line is longer than the measured one)
 
   FENCES.forEach(f => {
     const r = f.a * Math.PI / 180;
@@ -376,6 +420,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     const num = numberSprite(f.n, f.col[0]);
     num.position.set(fx, fTop + 0.75, -(half + 0.45));
     g.add(num);
+    f.num = num;
     scene.add(g);
 
     f.top = topRail;
@@ -499,13 +544,31 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   $('vTA').textContent = TIME_ALLOWED;
 
   // ---------- Riding constants ----------
-  const PACE_MIN = 4.2, PACE_MAX = 7.0, PACE_START = 5.8; // metres per second (252 to 420 m/min)
+  const PACE_MIN = 4.2, PACE_MAX = 7.0; // metres per second (252 to 420 m/min)
   const HORSE_START = { x: -38, z: 18, yaw: 0 };
   const WALL = { x: AX - 1.2, z: AZ - 1.2 };
   const HORSE_R = 0.6; // clearance around the horse's centre for collisions
-  // Jump timing in seconds either side of the ideal take-off point (Normal; phase 4 adds Easy and Hard)
-  const WINDOW = { good: 0.12, early: 0.35 };
   const MIN_JUMP_SPEED = 2; // a standing or walking horse cannot jump
+  const STRIDE = 3.6;       // metres per canter stride, for the countdown
+
+  // Levels. good: seconds either side of the ideal take-off point that clear the fence.
+  // early: how many seconds before it a press still counts (as early). align: how straight the approach must be.
+  const LEVELS = {
+    easy:   { name: 'Easy',   good: 0.20, early: 0.45, align: 0.75, pace: 5.8, guide: true,  pointer: true,  line: true,
+              info: 'Wide timing window. A guide line shows the route.' },
+    normal: { name: 'Normal', good: 0.12, early: 0.35, align: 0.85, pace: 5.8, guide: false, pointer: true,  line: true,
+              info: 'An arrow points to the next fence. A line on the sand marks the take-off.' },
+    hard:   { name: 'Hard',   good: 0.08, early: 0.30, align: 0.90, pace: 6.2, guide: false, pointer: false, line: false,
+              info: 'Narrow timing window. Only the stride count helps you.' }
+  };
+
+  // Per-viewer memory (best scores, last level). Works without storage too.
+  const store = {
+    get(k) { try { return localStorage.getItem('clearround.' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('clearround.' + k, v); } catch (e) { /* storage blocked */ } }
+  };
+  let level = LEVELS[store.get('level')] ? store.get('level') : 'normal';
+  let L = LEVELS[level];
 
   // Fence frame: u along the jumping direction, w sideways (+w is the red-flag side)
   FENCES.forEach(f => {
@@ -539,7 +602,9 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   window.addEventListener('keydown', e => {
     const k = KEYMAP[e.key];
     if (k || e.key === ' ') e.preventDefault();
-    if (e.key === ' ' && !e.repeat) pressJump();
+    if (R.state === 'ready' && LEVELS[['easy', 'normal', 'hard'][+e.key - 1]]) selectLevel(['easy', 'normal', 'hard'][+e.key - 1]);
+    if ((e.key === 'p' || e.key === 'P' || e.key === 'Escape') && !e.repeat) togglePause();
+    if (e.key === ' ' && !e.repeat && !R.paused) pressJump();
     if (!k) return;
     keys[k] = true;
     if (R.state === 'ready') startRiding();
@@ -558,10 +623,10 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   function newRound() {
     R = {
       state: 'ready', x: HORSE_START.x, z: HORSE_START.z, yaw: HORSE_START.yaw, yawRate: 0,
-      v: 0, pace: PACE_START,
+      v: 0, pace: L.pace,
       time: 0, clock: false, stopped: false, faults: 0, rails: [],
       disobedience: 0, disobeyed: [], eliminated: null, toastT: 0,
-      phase: 0, jump: null
+      phase: 0, jump: null, paused: false, cue: 0
     };
     FENCES.forEach(f => {
       f.knock = false;
@@ -573,12 +638,47 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       f.chip.className = '';
     });
     $('result').hidden = true;
-    $('hint').hidden = false;
+    $('toast').hidden = true;
+    $('paused').hidden = true;
+    $('start').hidden = false;
+    if (camMode === 'free') setCamera('follow');
+    selectLevel(level);
     H.legs.forEach(l => { l.a = 0; l.b = 0; });
   }
   function startRiding() {
+    if (R.state !== 'ready') return;
     R.state = 'riding';
-    $('hint').hidden = true;
+    $('start').hidden = true;
+  }
+
+  function selectLevel(name) {
+    level = name; L = LEVELS[name];
+    store.set('level', name);
+    if (R.state === 'ready') R.pace = L.pace;
+    document.querySelectorAll('[data-level]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.level === name)));
+    $('levelInfo').textContent = L.info;
+    const best = readBest(name);
+    $('best').textContent = best ? 'Your best on ' + L.name + ': ' + scoreText(best) + '.' : 'No round on ' + L.name + ' yet.';
+    guide.visible = L.guide;
+  }
+
+  function togglePause() {
+    if (R.state !== 'riding' && R.state !== 'finishing') return;
+    R.paused = !R.paused;
+    $('paused').hidden = !R.paused;
+    for (const k in keys) keys[k] = false;
+  }
+
+  // Best score per level: fewest faults, then fastest time
+  function readBest(name) {
+    try { return JSON.parse(store.get('best.' + name)); } catch (e) { return null; }
+  }
+  const scoreText = s => (s.faults === 0 ? 'clear' : s.faults + ' faults') + ' in ' + s.time.toFixed(2) + ' s';
+  function saveBest(score) {
+    const old = readBest(level);
+    const better = !old || score.faults < old.faults || (score.faults === old.faults && score.time < old.time);
+    if (better) store.set('best.' + level, JSON.stringify(score));
+    return { better, old };
   }
 
   function timeFaults() {
@@ -588,14 +688,29 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 
   function showResult() {
     const title = $('rTitle');
+    $('rLevel').textContent = 'Round complete · ' + L.name;
+    const list = $('rFences');
+    list.innerHTML = '';
+    FENCES.forEach(f => {
+      const li = document.createElement('li');
+      const word = { good: 'Good', early: 'Early', late: 'Late' }[f.result] || '-';
+      li.className = f.result || '';
+      li.textContent = f.n;
+      const span = document.createElement('span'); span.textContent = word; li.appendChild(span);
+      list.appendChild(li);
+    });
     if (R.eliminated) {
       title.textContent = 'Eliminated';
       title.className = 'faults';
       $('rDetail').textContent = R.eliminated;
+      $('rBest').textContent = '';
       $('result').hidden = false;
       return;
     }
     const tf = timeFaults(), total = R.faults + tf;
+    const { better, old } = saveBest({ faults: total, time: R.time });
+    $('rBest').textContent = better ? (old ? 'New best on ' + L.name + '. Old best: ' + scoreText(old) + '.' : 'First round on ' + L.name + ' saved as your best.')
+                                    : 'Your best on ' + L.name + ': ' + scoreText(old) + '.';
     title.textContent = total === 0 ? 'Clear round' : total + (total === 1 ? ' fault' : ' faults');
     title.className = total === 0 ? 'clear' : 'faults';
     const parts = [R.time.toFixed(2) + ' s against ' + TIME_ALLOWED + ' s allowed.'];
@@ -613,16 +728,19 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       R.faults += 4; R.rails.push(f.n);
       f.fall = { t: 0, dir: Math.random() < .5 ? -1 : 1 };
       f.chip.className = 'down';
+      toast('Rail down, 4 faults', 'bad');
     } else f.chip.className = 'clear';
   }
 
   // The next fence on the course, in number order
   const nextFence = () => FENCES.find(f => !f.done);
 
-  function toast(text) {
+  // kind: good (green), warn (gold), bad (red), muted (grey)
+  function toast(text, kind) {
     $('toast').textContent = text;
+    $('toast').className = 'panel toast ' + (kind || 'bad');
     $('toast').hidden = false;
-    R.toastT = 1.8;
+    R.toastT = 1.6;
   }
 
   function eliminate(reason) {
@@ -650,19 +768,94 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       const takeoff = -(f.spread / 2 + f.run);
       const align = fx * f.dx + fz * f.dz;
       if (align < 0.6 || Math.abs(w) > RAIL_LEN / 2) continue;
-      if (u < takeoff - WINDOW.early * R.v || u > -f.blockU) continue;
+      if (u < takeoff - L.early * R.v || u > -f.blockU) continue;
       const next = nextFence();
       if (f !== next) {
         eliminate('Error of course: fence ' + f.n + (next ? ' jumped before fence ' + next.n + '.' : ' jumped again.'));
         return;
       }
       const err = (u - takeoff) / R.v; // seconds; negative is early
-      f.result = Math.abs(err) <= WINDOW.good && align > 0.85 ? 'good' : err < 0 ? 'early' : 'late';
+      f.result = Math.abs(err) <= L.good && align > L.align ? 'good' : err < 0 ? 'early' : 'late';
       f.knock = f.result !== 'good';
+      toast({ good: 'Good', early: 'Early', late: 'Late' }[f.result], f.result === 'good' ? 'good' : 'warn');
       R.jump = { f, d: 0, L: -u + f.spread / 2 + f.run };
       return;
     }
-    // No fence within reach: the press does nothing ("Too soon" cue comes in phase 4)
+    // No fence within reach. If the next fence is ahead, say so; elsewhere the press does nothing.
+    const next = nextFence();
+    if (next) {
+      const [u, w] = fenceUW(next, R.x, R.z);
+      if (u < 0 && u > -30 && Math.abs(w) < RAIL_LEN && fx * next.dx + fz * next.dz > 0.6) toast('Too soon', 'muted');
+    }
+  }
+
+  // ---------- Cues on the sand ----------
+  // Take-off line in front of the next fence (Easy and Normal)
+  const takeoffLine = new THREE.Group();
+  takeoffLine.add(mesh(new THREE.PlaneGeometry(0.4, RAIL_LEN), new THREE.MeshBasicMaterial({ color: 0xffc928 }), 0, 0.02, 0, false));
+  takeoffLine.children[0].rotation.x = -Math.PI / 2;
+  scene.add(takeoffLine);
+
+  // Dashed guide line along the measured route (Easy)
+  const DASHES = Math.floor(LEN / 1.6);
+  const guide = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.8, 0.12), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }), DASHES);
+  {
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), t = new THREE.Vector3();
+    for (let i = 0; i < DASHES; i++) {
+      const u = (i + 0.5) / DASHES;
+      curve.getPointAt(u, p); curve.getTangentAt(u, t);
+      e.set(-Math.PI / 2, 0, 0); q.setFromEuler(e);
+      q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-t.z, t.x)));
+      m4.compose(p.setY(0.025), q, one);
+      guide.setMatrixAt(i, m4);
+    }
+  }
+  scene.add(guide);
+
+  function updateCues(t) {
+    const next = nextFence();
+    const playing = R.state === 'riding' && next;
+    const fx = Math.cos(R.yaw), fz = -Math.sin(R.yaw);
+
+    // Next fence number pulses
+    FENCES.forEach(f => f.num.scale.setScalar(f === next && R.state !== 'done' ? 0.9 * (1.15 + 0.15 * Math.sin(t * 6)) : 0.9));
+
+    takeoffLine.visible = !!(L.line && next && R.state !== 'done');
+    if (takeoffLine.visible) {
+      const d = -(next.spread / 2 + next.run);
+      takeoffLine.position.set(next.x + next.dx * d, 0, next.z + next.dz * d);
+      takeoffLine.rotation.y = Math.atan2(-next.dz, next.dx);
+    }
+
+    // Stride countdown when lined up with the next fence and coming toward it
+    let cue = 0;
+    if (playing && !R.jump) {
+      const [u, w] = fenceUW(next, R.x, R.z);
+      const dist = -(next.spread / 2 + next.run) - u;
+      if (Math.abs(w) < RAIL_LEN / 2 && fx * next.dx + fz * next.dz > 0.6 && dist > 0 && dist <= 3 * STRIDE && R.v > MIN_JUMP_SPEED) cue = Math.ceil(dist / STRIDE);
+    }
+    if (cue !== R.cue) {
+      R.cue = cue;
+      $('cue').hidden = !cue;
+      $('cue').textContent = cue || '';
+    }
+
+    // Pointer: hidden once the horse is lined up on the approach
+    let showPointer = L.pointer && playing && !R.jump;
+    if (showPointer) {
+      const [u, w] = fenceUW(next, R.x, R.z);
+      const lined = u < 0 && u > -28 && Math.abs(w) < RAIL_LEN / 2 && fx * next.dx + fz * next.dz > 0.85;
+      showPointer = !lined;
+      const back = next.spread / 2 + next.run + 6;
+      const tx = next.x - next.dx * back - R.x, tz = next.z - next.dz * back - R.z;
+      // Close to the approach point, point at the fence itself
+      const near = Math.hypot(tx, tz) < 4;
+      const ax = near ? next.x - R.x : tx, az = near ? next.z - R.z : tz;
+      // Bearing of the target from the horse's nose: 0 is straight ahead, positive is to the right
+      const bearing = Math.atan2(ax * -fz + az * fx, ax * fx + az * fz);
+      $('pointer').style.transform = 'translate(-50%, -50%) rotate(' + bearing.toFixed(3) + 'rad)';
+    }
+    if ($('pointer').hidden === showPointer) $('pointer').hidden = !showPointer;
   }
 
   // ---------- Simulation ----------
@@ -781,12 +974,13 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   // ---------- Camera ----------
   let camMode = 'follow';
   const camGoal = new THREE.Vector3(), lookGoal = new THREE.Vector3(), look = new THREE.Vector3(-30, 1, 18);
-  document.querySelectorAll('[data-cam]').forEach(b => b.addEventListener('click', () => {
-    camMode = b.dataset.cam;
-    document.querySelectorAll('[data-cam]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    controls.enabled = camMode === 'free';
-    if (camMode === 'free') { controls.target.copy(H.root.position); controls.update(); }
-  }));
+  function setCamera(mode) {
+    camMode = mode;
+    document.querySelectorAll('[data-cam]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cam === mode)));
+    controls.enabled = mode === 'free';
+    if (mode === 'free') { controls.target.copy(H.root.position); controls.update(); }
+  }
+  document.querySelectorAll('[data-cam]').forEach(b => b.addEventListener('click', () => setCamera(b.dataset.cam)));
 
   function updateCamera(dt) {
     if (camMode === 'free') { controls.update(); return; }
@@ -821,14 +1015,20 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     fv.textContent = R.faults + tf;
     fv.classList.toggle('has', R.faults + tf > 0);
     $('pace').textContent = 'Pace ' + Math.round(R.pace * 60) + ' m/min';
+    // Free camera only once the round is over: dragging the view would get in the way of riding
+    const freeBtn = document.querySelector('[data-cam="free"]');
+    const freeOk = R.state === 'done';
+    if (freeBtn.disabled === freeOk) freeBtn.disabled = !freeOk;
   }
 
   // Test hook: open the page with #debug to drive the horse from the console
-  if (location.hash === '#debug') window.__game = { get R() { return R; }, keys, FENCES, step, newRound, startRiding, TIME_ALLOWED, samples, LEN, pressJump };
+  if (location.hash === '#debug') window.__game = { get R() { return R; }, keys, FENCES, step, newRound, startRiding, selectLevel, togglePause, TIME_ALLOWED, samples, LEN, pressJump, updateCues, LEVELS, get level() { return level; } };
 
   // ---------- Controls ----------
   $('restart').addEventListener('click', newRound);
   $('again').addEventListener('click', newRound);
+  $('go').addEventListener('click', startRiding);
+  document.querySelectorAll('[data-level]').forEach(b => b.addEventListener('click', () => selectLevel(b.dataset.level)));
 
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -846,7 +1046,8 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    step(dt);
+    if (!R.paused) step(dt);
+    updateCues(now / 1000);
     updateCamera(dt);
     updateHud();
     renderer.render(scene, camera);
