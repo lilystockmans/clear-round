@@ -1,0 +1,32 @@
+{
+  "project": "Clear Round, playable version",
+  "plan": "/Users/lily/.claude/plans/system-reminder-you-are-cuddly-lake.md",
+  "simulator_artifact": "https://claude.ai/artifact/7UAjFdxJ5zGLb41JbUagDJ",
+  "game_artifact": null,
+  "current_stage": "phase-1-setup",
+  "stages": {
+    "phase-1-setup": {
+      "status": "done",
+      "date": "2026-11-09",
+      "inputs": ["simulator artifact, version 1793357372-f7d4"],
+      "outputs": [
+        "simulator.html: the watch-only simulator, publish wrapper removed",
+        "game.html: copy of the simulator, starting point for the game"
+      ],
+      "verified": "game.html served on localhost, round runs, no console errors"
+    },
+    "phase-2-steering": { "status": "pending" },
+    "phase-3-jumping": { "status": "pending" },
+    "phase-4-cues-and-screens": { "status": "pending" },
+    "phase-5-phone": { "status": "pending" },
+    "phase-6-test-and-publish": { "status": "pending" }
+  },
+  "open_questions": [
+    "Scoring: 4 faults per rail (recommended) or 1 point",
+    "Up/down arrows for pace (recommended) or fixed pace",
+    "New artifact for the game (recommended) or replace the simulator",
+    "Strict elimination rules on Easy too, or gentler",
+    "Name: keep Clear Round or a new name"
+  ],
+  "next_step": "Answer the open questions, then start phase-2-steering in game.html"
+}
