@@ -1,4 +1,5 @@
 <title>Clear Round</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;600&display=swap">
@@ -105,9 +106,38 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
 }
 .pointer svg { display: block; width: 100%; height: 100%; fill: var(--gold); stroke: rgba(0,0,0,.35); stroke-width: 1.5; }
-.paused { position: fixed; left: 50%; top: 46%; transform: translate(-50%, -50%); padding: 14px 20px; font-size: 15px; text-align: center; }
+.paused {
+  position: fixed; left: 50%; top: 46%; transform: translate(-50%, -50%); padding: 14px 20px; font-size: 15px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px; width: max-content; max-width: calc(100% - 32px);
+}
 .cams button:disabled { opacity: .35; cursor: default; }
 .cams button:disabled:hover { background: transparent; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.touch-only { display: none; }
+html.touch .key-only { display: none; }
+html.touch p.touch-only { display: block; }
+html.touch span.touch-only { display: inline; }
+/* Touch controls: shown only on touch screens */
+.pad { display: none; }
+html.touch .pad { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.pad .grp, .pad .col { display: flex; gap: 8px; }
+.pad .col { flex-direction: column; align-items: flex-end; }
+.pad button {
+  pointer-events: auto; width: 68px; height: 68px; padding: 0; display: grid; place-items: center;
+  background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 12px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.pad button svg { width: 30px; height: 30px; fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.pad button.small { width: 48px; height: 48px; }
+.pad button.small svg { width: 22px; height: 22px; }
+.pad .jump { width: 108px; height: 68px; background: var(--gold); color: #1d1a10; font: 700 24px/1 var(--display); letter-spacing: .03em; }
+.pad button.held { background: rgba(255,255,255,.24); }
+.pad .jump.held { background: #f3c85c; }
+html.touch.menu .pad { visibility: hidden; }
+html.touch .ctrl { display: none; }
+html.touch .chips li { min-width: 0; flex: 1; padding: 5px 4px; }
+html.touch .chips { flex-wrap: nowrap; flex: 1; }
 @media (max-width: 560px) {
   .val { font-size: 24px; }
   .cell { padding: 6px 10px 8px; }
@@ -132,28 +162,47 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
       <button data-cam="free" aria-pressed="false">Free</button>
     </nav>
   </div>
-  <div class="row bottom">
-    <ol class="panel chips" id="chips" aria-label="Course"></ol>
-    <div class="panel ctrl">
-      <span class="pace" id="pace">Pace -- m/min</span>
-      <button id="restart" class="primary">New round</button>
+  <div class="stack">
+    <div class="pad" aria-label="Touch controls">
+      <div class="grp">
+        <button data-hold="left" aria-label="Steer left"><svg viewBox="0 0 24 24"><path d="M15 4 L7 12 L15 20"/></svg></button>
+        <button data-hold="right" aria-label="Steer right"><svg viewBox="0 0 24 24"><path d="M9 4 L17 12 L9 20"/></svg></button>
+      </div>
+      <div class="grp">
+        <div class="col">
+          <button class="small" data-hold="up" aria-label="Faster"><svg viewBox="0 0 24 24"><path d="M5 12 H19 M12 5 V19"/></svg></button>
+          <button class="small" data-hold="down" aria-label="Slower"><svg viewBox="0 0 24 24"><path d="M5 12 H19"/></svg></button>
+        </div>
+        <div class="col">
+          <button class="small" id="tPause" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M8 5 V19 M16 5 V19"/></svg></button>
+          <button class="jump" id="tJump">Jump</button>
+        </div>
+      </div>
+    </div>
+    <div class="row bottom">
+      <ol class="panel chips" id="chips" aria-label="Course"></ol>
+      <div class="panel ctrl">
+        <span class="pace" id="pace">Pace -- m/min</span>
+        <button id="restart" class="primary">New round</button>
+      </div>
     </div>
   </div>
   <div class="cue" id="cue" aria-hidden="true" hidden></div>
   <div class="pointer" id="pointer" aria-hidden="true" hidden><svg viewBox="0 0 48 48"><path d="M24 3 L42 40 L24 31 L6 40 Z"/></svg></div>
   <div class="panel toast" id="toast" role="status" hidden></div>
-  <div class="panel paused" id="paused" hidden>Paused. Press <strong>P</strong> to ride on.</div>
+  <div class="panel paused" id="paused" hidden>Paused. <span class="key-only">Press <strong>P</strong> to ride on.</span><span class="touch-only">Tap pause to ride on.</span><button id="pRestart" class="primary">New round</button></div>
   <section class="panel card" id="start" aria-label="Start">
     <span class="eyebrow">Clear Round</span>
     <h2>Ride the course</h2>
     <p>Jump fences 1 to 7 in number order, with the red flag on your right. Then ride through the finish.</p>
     <div class="levels" role="radiogroup" aria-label="Level">
-      <button role="radio" data-level="easy" aria-checked="false">1 Easy</button>
-      <button role="radio" data-level="normal" aria-checked="true">2 Normal</button>
-      <button role="radio" data-level="hard" aria-checked="false">3 Hard</button>
+      <button role="radio" data-level="easy" aria-checked="false"><span class="key-only">1 </span>Easy</button>
+      <button role="radio" data-level="normal" aria-checked="true"><span class="key-only">2 </span>Normal</button>
+      <button role="radio" data-level="hard" aria-checked="false"><span class="key-only">3 </span>Hard</button>
     </div>
     <p id="levelInfo"></p>
-    <p class="keys"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> steer &middot; <kbd>&uarr;</kbd> <kbd>&darr;</kbd> pace &middot; <kbd>Space</kbd> jump &middot; <kbd>P</kbd> pause</p>
+    <p class="keys key-only"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> steer &middot; <kbd>&uarr;</kbd> <kbd>&darr;</kbd> pace &middot; <kbd>Space</kbd> jump &middot; <kbd>P</kbd> pause</p>
+    <p class="keys touch-only">Hold the left and right buttons to steer. Plus and minus change pace. Tap Jump to take off.</p>
     <p id="best"></p>
     <button id="go" class="primary">Start</button>
   </section>
@@ -986,9 +1035,10 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     if (camMode === 'free') { controls.update(); return; }
     const p = H.root.position, yaw = H.root.rotation.y;
     const fx = Math.cos(yaw), fz = -Math.sin(yaw);
+    const portrait = innerHeight > innerWidth;
     if (camMode === 'follow') {
-      camGoal.set(p.x - fx * 9, 4.2, p.z - fz * 9);
-      lookGoal.set(p.x + fx * 5, 1.4, p.z + fz * 5);
+      camGoal.set(p.x - fx * 9, portrait ? 5.2 : 4.2, p.z - fz * 9);
+      lookGoal.set(p.x + fx * 5, portrait ? -1.2 : 1.4, p.z + fz * 5);
     } else if (camMode === 'side') {
       camGoal.set(p.x - fz * 12, 2.6, p.z + fx * 12);
       lookGoal.set(p.x, 1.4, p.z);
@@ -1018,6 +1068,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     // Free camera only once the round is over: dragging the view would get in the way of riding
     const freeBtn = document.querySelector('[data-cam="free"]');
     const freeOk = R.state === 'done';
+    document.documentElement.classList.toggle('menu', R.state === 'ready' || R.state === 'done');
     if (freeBtn.disabled === freeOk) freeBtn.disabled = !freeOk;
   }
 
@@ -1027,8 +1078,36 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
   // ---------- Controls ----------
   $('restart').addEventListener('click', newRound);
   $('again').addEventListener('click', newRound);
+  $('pRestart').addEventListener('click', newRound);
   $('go').addEventListener('click', startRiding);
   document.querySelectorAll('[data-level]').forEach(b => b.addEventListener('click', () => selectLevel(b.dataset.level)));
+
+  // ---------- Touch controls ----------
+  // Shown on touch screens. Steer and pace buttons work while held, like the arrow keys.
+  if (matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0) document.documentElement.classList.add('touch');
+  document.querySelectorAll('[data-hold]').forEach(b => {
+    const k = b.dataset.hold;
+    const release = () => { keys[k] = false; b.classList.remove('held'); };
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      keys[k] = true; b.classList.add('held');
+      // Keep the button held if the finger slides off it; not every browser allows this
+      try { b.setPointerCapture(e.pointerId); } catch (err) { /* hold still works without capture */ }
+      if (R.state === 'ready' && (k === 'left' || k === 'right')) startRiding();
+    });
+    b.addEventListener('pointerup', release);
+    b.addEventListener('pointercancel', release);
+    b.addEventListener('lostpointercapture', release);
+  });
+  // Jump fires on touch-down, not on release, so the timing is what the player feels
+  $('tJump').addEventListener('pointerdown', e => {
+    e.preventDefault();
+    $('tJump').classList.add('held');
+    if (!R.paused) pressJump();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('tJump').addEventListener(t, () => $('tJump').classList.remove('held')));
+  $('tPause').addEventListener('click', togglePause);
+  document.querySelector('.pad').addEventListener('contextmenu', e => e.preventDefault());
 
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;

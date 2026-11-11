@@ -3,7 +3,7 @@
   "plan": "/Users/lily/.claude/plans/system-reminder-you-are-cuddly-lake.md",
   "simulator_artifact": "https://claude.ai/artifact/7UAjFdxJ5zGLb41JbUagDJ",
   "game_artifact": null,
-  "current_stage": "phase-4-cues-and-screens",
+  "current_stage": "phase-5-phone",
   "stages": {
     "phase-1-setup": {
       "status": "done",
@@ -66,7 +66,7 @@
       "lily_play_test": "feels good (2026-11-09)"
     },
     "phase-4-cues-and-screens": {
-      "status": "built, waiting for Lily's play test",
+      "status": "done",
       "date": "2026-11-09",
       "outputs": [
         "levels: Easy (good 0.20 s, guide line, arrow, take-off line), Normal (0.12 s, arrow, take-off line), Hard (0.08 s, stride count only, faster start pace)",
@@ -90,10 +90,31 @@
         "result card with fence list and best score; Free camera enabled after the round",
         "no console errors",
         "real-time feel NOT verified: browser pane runs at about 1 fps"
-      ]
+      ],
+      "lily_play_test": "feels good (2026-11-11)"
     },
     "phase-5-phone": {
-      "status": "pending"
+      "status": "built, waiting for Lily's phone test",
+      "date": "2026-11-11",
+      "outputs": [
+        "touch buttons on touch screens: hold left/right to steer, hold +/- for pace, Jump fires on touch-down, Pause",
+        "touch buttons hidden while the start or result card is open",
+        "on phones New round moved into the pause panel (also on desktop pause); fence strip on one line",
+        "portrait phones: Follow camera higher, horse sits above the buttons",
+        "start card and pause panel show touch wording on phones",
+        "viewport tag added so the local file renders at phone width",
+        "steer buttons set steering before pointer capture; capture failure no longer blocks a press"
+      ],
+      "verified": [
+        "375 x 812 emulation: no sideways scroll, nothing overlaps, horse above the buttons",
+        "real tap on Jump at the take-off point: Good",
+        "steer hold turns the horse; release and cancel stop it; +/- move pace 348 to 420 and back",
+        "Pause tap shows the pause panel with New round",
+        "autopilot jumping with the Jump button: Clear round on Easy, Normal, Hard",
+        "desktop width: no touch buttons, layout as before",
+        "no console errors on the current version",
+        "real phone NOT tested: only browser emulation"
+      ]
     },
     "phase-6-test-and-publish": {
       "status": "pending"
@@ -107,5 +128,5 @@
     "rules_on_easy": "same strict rules as Normal and Hard",
     "name": "Clear Round"
   },
-  "next_step": "Lily plays phase 4; then phase-5-phone"
+  "next_step": "Lily tests on a phone after publish (or locally); then phase-6-test-and-publish"
 }
