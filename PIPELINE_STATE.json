@@ -2,8 +2,8 @@
   "project": "Clear Round, playable version",
   "plan": "/Users/lily/.claude/plans/system-reminder-you-are-cuddly-lake.md",
   "simulator_artifact": "https://claude.ai/artifact/7UAjFdxJ5zGLb41JbUagDJ",
-  "game_artifact": null,
-  "current_stage": "phase-5-phone",
+  "game_artifact": "https://claude.ai/artifact/JYGcoSwf3Q2FHjJggLkfd4",
+  "current_stage": "phase-6-test-and-publish",
   "stages": {
     "phase-1-setup": {
       "status": "done",
@@ -94,7 +94,7 @@
       "lily_play_test": "feels good (2026-11-11)"
     },
     "phase-5-phone": {
-      "status": "built, waiting for Lily's phone test",
+      "status": "done",
       "date": "2026-11-11",
       "outputs": [
         "touch buttons on touch screens: hold left/right to steer, hold +/- for pace, Jump fires on touch-down, Pause",
@@ -117,7 +117,17 @@
       ]
     },
     "phase-6-test-and-publish": {
-      "status": "pending"
+      "status": "done",
+      "date": "2026-11-11",
+      "outputs": [
+        "game published as a new private artifact: https://claude.ai/artifact/JYGcoSwf3Q2FHjJggLkfd4 (version 1794421318-3853)"
+      ],
+      "verified": [
+        "final test pass on game.html: perfect round clear on Easy/Normal/Hard; all late and all early 32 faults; refusal then elimination; run-out; error of course; finish before last fence ignored; arena wall stops the horse",
+        "live file downloaded and compared: identical to game.html apart from the publish wrapper and one trailing blank line",
+        "live page NOT rendered by Claude: the browser pane is not signed in to claude.ai; opened in Lily's app instead",
+        "real phone NOT tested yet"
+      ]
     }
   },
   "decisions": {
@@ -128,5 +138,5 @@
     "rules_on_easy": "same strict rules as Normal and Hard",
     "name": "Clear Round"
   },
-  "next_step": "Lily tests on a phone after publish (or locally); then phase-6-test-and-publish"
+  "next_step": "Lily opens the link on her phone and in her browser; report any problems"
 }
