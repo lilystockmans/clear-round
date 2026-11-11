@@ -216,8 +216,8 @@ html.touch .chips { flex-wrap: nowrap; flex: 1; }
   </section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" crossorigin="anonymous"></script>
 <script>
 (function () {
   // ---------- Renderer, scene, camera ----------
@@ -720,7 +720,11 @@ html.touch .chips { flex-wrap: nowrap; flex: 1; }
 
   // Best score per level: fewest faults, then fastest time
   function readBest(name) {
-    try { return JSON.parse(store.get('best.' + name)); } catch (e) { return null; }
+    // Storage is editable by the viewer: accept only a well-formed score
+    try {
+      const s = JSON.parse(store.get('best.' + name));
+      return s && Number.isFinite(s.faults) && Number.isFinite(s.time) ? s : null;
+    } catch (e) { return null; }
   }
   const scoreText = s => (s.faults === 0 ? 'clear' : s.faults + ' faults') + ' in ' + s.time.toFixed(2) + ' s';
   function saveBest(score) {
